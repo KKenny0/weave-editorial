@@ -1,6 +1,6 @@
 # weave-editorial
 
-`weave-editorial` 是 `weave` 的下游编辑 skill：把已经完成研究与引用核验的中文 Markdown 长文，按 `faithful` 或 `publication` 模式改写为一篇可同时发布到微信公众号和 X 长文的完整成稿。
+`weave-editorial` 是 [weave](https://github.com/KKenny0/weave) 的下游编辑 skill：把已经完成研究与引用核验的中文 Markdown 长文，按 `faithful` 或 `publication` 模式改写为一篇可同时发布到微信公众号和 X 长文的完整成稿。
 
 `faithful` 解决“让主线更强，同时保留全部独立信息”；`publication` 解决“保留承重判断、证据、反例和边界，同时允许公共文章进行真正的编辑选择”。两种模式都通过 Publication Gate 检查标题兑现、开头、主线、准确复述、自然传播理由和长期检索锚点。
 
@@ -16,7 +16,13 @@
 
 ## 安装
 
-在仓库目录运行：
+推荐直接通过 NPX Skills 从 GitHub 安装到 Codex 与 Claude Code：
+
+```powershell
+npx -y skills@1.5.17 add https://github.com/KKenny0/weave-editorial --skill weave-editorial -g -a codex -a claude-code -y
+```
+
+如果已经克隆仓库，也可以在仓库目录安装：
 
 ```powershell
 npx -y skills@1.5.17 add . --skill weave-editorial -g -a codex -a claude-code -y
