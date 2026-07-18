@@ -3,6 +3,7 @@
   "evals": [
     {
       "id": 1,
+      "mode": "faithful",
       "prompt": "把附件中的研究综述改成一篇可同时发布到微信公众号和 X 长文的完整文章。强化主线和开头，但不要删掉评测、成本、安全这些次要材料；不要补研究，不要输出 thread 或两个平台版本。输出文件名为 survey-editorial.md。",
       "expected_output": "一篇单一 Markdown 成稿；以写入、组织、检索、修订为主线，完整保留来源、图片、表格与次要叙事。",
       "files": ["evals/files/survey.md"],
@@ -15,6 +16,7 @@
     },
     {
       "id": 2,
+      "mode": "faithful",
       "prompt": "这篇深读稿事实已经核过了，请做发布前的平台化改写。我想发公众号，也会原样发到 X 长文。不要摘要，不要砍掉反例和方法限制，把它们放到不抢主线的位置即可。输出 deep-read-editorial.md。",
       "expected_output": "一篇论点清楚的单一 Markdown 成稿；保留反例、限定条件、全部链接和图片，标题与开头更具读者问题。",
       "files": ["evals/files/deep-read.md"],
@@ -27,6 +29,7 @@
     },
     {
       "id": 3,
+      "mode": "faithful",
       "prompt": "把 source-dive.md 重写成可跨平台发布的一篇完整技术文章。代码、表格、来源和失败路径都必须留下，只调整叙事层级、顺序、标题、衔接和结尾。不要新增事实，也不要生成 X thread。输出 source-dive-editorial.md。",
       "expected_output": "一篇完整技术长文；代码块、表格、URL、失败路径及边界全部保留，单 H1、status draft、无平台分版。",
       "files": ["evals/files/source-dive.md"],
@@ -35,6 +38,48 @@
         "成稿只有一个 H1，frontmatter title 与 H1 一致，status 为 draft，且没有 thread 或平台分版标记",
         "正文非空白字符数不低于源稿的 85%",
         "并发写入、删除未传播、成本和版本边界四项内容仍有实质内容"
+      ]
+    },
+    {
+      "id": 4,
+      "mode": "publication",
+      "prompt": "把 deep-read.md 改成准备发到微信公众号和 X 长文的公共文章。允许删除不承重的背景和重复例子，但必须保留核心判断、最强证据、两个关键反例、方法限制和来源边界。不要新增研究或生成两个平台版本。输出 deep-read-publication.md。",
+      "expected_output": "一篇围绕单一公共问题推进的完整文章；标题与开头更容易进入，非承重材料可以删减，关键反例和边界不因传播目标消失。",
+      "files": ["evals/files/deep-read.md"],
+      "assertions": [
+        "输出中的 URL、Markdown 图片和代码块均来自源稿，没有新增材料",
+        "核心判断、最强证据、两个关键反例、方法限制和来源范围仍有实质内容",
+        "标题、开头、正文和结尾回答同一个问题，内部复述同时包含判断与边界",
+        "能够给出具体读者到具体读者的自然传播理由，正文没有关注或转发诱导",
+        "允许删除重复例子和不承重背景，不以 85% 长度作为通过条件"
+      ]
+    },
+    {
+      "id": 5,
+      "mode": "publication",
+      "prompt": "把 survey.md 编辑成面向公共读者的公众号与 X 长文。围绕一个稳定问题组织领域地图，保留承重方法族、关键争议、成本、安全和证据边界；允许删除不影响地图判断的旁支条目。不要补研究。输出 survey-publication.md。",
+      "expected_output": "一篇有单一问题和长期检索锚点的领域文章；不是领域清单，也没有因删减而把代表性证据改写成普遍结论。",
+      "files": ["evals/files/survey.md"],
+      "assertions": [
+        "输出中的 URL、Markdown 图片和代码块均为源稿集合的子集",
+        "主方法族、关键争议、成本、安全和覆盖边界仍在",
+        "删除旁支条目没有提高比较结论或隐藏证据上限",
+        "标题和小标题使用源稿支持的读者问题，不堆叠搜索关键词",
+        "Publication Gate 的七项检查通过，内部探针未写入成稿"
+      ]
+    },
+    {
+      "id": 6,
+      "mode": "publication",
+      "prompt": "把 source-dive.md 编辑成准备公开发布的技术长文。保留证明核心机制所需的代码、表格、最关键失败路径、成本和版本边界；允许删除不承重的实现细节。不要新增事实或生成 thread。输出 source-dive-publication.md。",
+      "expected_output": "一篇从用户问题推进到机制、代价和边界的完整技术文章；技术材料经过承重选择，但没有篡改源码证据或删除会改变结论的失败路径。",
+      "files": ["evals/files/source-dive.md"],
+      "assertions": [
+        "输出中的 URL、Markdown 图片和代码块均来自源稿，保留的代码块内容不变",
+        "核心机制、至少一个关键失败路径、成本和版本边界仍有实质内容",
+        "删除实现细节没有把局部机制扩大成系统级保证",
+        "文章具有准确复述、具体传播理由和长期机制锚点",
+        "成稿保持单一长文，不是摘要、thread 或平台分版"
       ]
     }
   ]

@@ -3,6 +3,8 @@
 param(
     [string]$SourceArticle,
     [string]$OutputArticle,
+    [ValidateSet('faithful', 'publication')]
+    [string]$Mode = 'faithful',
     [switch]$SkipInstall
 )
 
@@ -49,6 +51,16 @@ function Compare-ExactSet($Expected, $Actual, [string]$Label) {
     }
 }
 
+function Compare-Subset($Allowed, $Actual, [string]$Label) {
+    $added = @($Actual | Where-Object { -not $Allowed.Contains($_) })
+    if ($added.Count -eq 0) {
+        Pass "$Label 均来自源稿（输出 $($Actual.Count) / 源稿 $($Allowed.Count) 项）"
+    } else {
+        Fail "$Label 包含源稿中不存在的内容：新增 $($added.Count) 项"
+        foreach ($item in $added) { Write-Host "       added:   $item" }
+    }
+}
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $required = @(
     'SKILL.md',
@@ -74,15 +86,29 @@ if (Test-Path -LiteralPath $skillPath) {
     if ((Get-FrontmatterValue $frontmatter 'name') -eq 'weave-editorial') { Pass 'SKILL.md name 正确' } else { Fail 'SKILL.md name 必须为 weave-editorial' }
     if (Get-FrontmatterValue $frontmatter 'description') { Pass 'SKILL.md description 存在' } else { Fail 'SKILL.md 缺少 description' }
     if (($skillText -split "`n").Count -lt 500) { Pass 'SKILL.md 少于 500 行' } else { Fail 'SKILL.md 应少于 500 行' }
+    foreach ($requiredContract in @('faithful', 'publication', 'Publication Gate', 'Accurate retellability', 'Natural transmission reason', 'Durable retrieval anchor')) {
+        if ($skillText -notmatch [regex]::Escape($requiredContract)) { Fail "SKILL.md 缺少双模式或发布门契约：$requiredContract" }
+    }
+}
+
+$protocolPath = Join-Path $repoRoot 'references/editorial-protocol.md'
+if (Test-Path -LiteralPath $protocolPath) {
+    $protocolText = Get-Content -Raw -LiteralPath $protocolPath
+    foreach ($requiredProtocol in @('## 1. 选择模式', '## 2. 模式化内容账本', '## 9. Publication Gate', '### Reader entry', '### Opening fulfillment', '### Narrative progression', '### Accurate retellability', '### Natural transmission reason', '### Durable retrieval anchor', '### Integrity')) {
+        if ($protocolText -notmatch [regex]::Escape($requiredProtocol)) { Fail "编辑协议缺少必要章节：$requiredProtocol" }
+    }
 }
 
 $evalPath = Join-Path $repoRoot 'evals/evals.json'
 if (Test-Path -LiteralPath $evalPath) {
     try {
         $evals = Get-Content -Raw -LiteralPath $evalPath | ConvertFrom-Json
-        if ($evals.skill_name -eq 'weave-editorial' -and @($evals.evals).Count -eq 3) { Pass 'evals.json 包含 3 个评测' } else { Fail 'evals.json 的 skill_name 或评测数量不正确' }
+        if ($evals.skill_name -eq 'weave-editorial' -and @($evals.evals).Count -eq 6) { Pass 'evals.json 包含 6 个评测' } else { Fail 'evals.json 的 skill_name 或评测数量不正确' }
         foreach ($eval in @($evals.evals)) {
-            if (-not $eval.prompt -or -not $eval.expected_output -or @($eval.files).Count -ne 1) { Fail "评测 $($eval.id) 字段不完整" }
+            if (-not $eval.prompt -or -not $eval.expected_output -or @($eval.files).Count -ne 1 -or $eval.mode -notin @('faithful', 'publication')) { Fail "评测 $($eval.id) 字段不完整或 mode 无效" }
+        }
+        if (@($evals.evals | Where-Object { $_.mode -eq 'faithful' }).Count -ne 3 -or @($evals.evals | Where-Object { $_.mode -eq 'publication' }).Count -ne 3) {
+            Fail 'evals.json 必须各包含 3 个 faithful 与 publication 评测'
         }
     } catch { Fail "evals.json 无法解析：$($_.Exception.Message)" }
 }
@@ -126,9 +152,22 @@ if ($SourceArticle -and $OutputArticle) {
         $urlPattern = 'https?://[^\s<>)\]"'']+'
         $imagePattern = '!\[[^\]]*\]\([^\r\n)]+\)'
         $codePattern = '(?ms)^```[^\r\n]*\r?\n.*?^```\s*$'
-        Compare-ExactSet (Get-Set ([regex]::Matches($sourceText, $urlPattern).Value)) (Get-Set ([regex]::Matches($outputText, $urlPattern).Value)) 'URL'
-        Compare-ExactSet (Get-Set ([regex]::Matches($sourceText, $imagePattern).Value)) (Get-Set ([regex]::Matches($outputText, $imagePattern).Value)) '图片引用'
-        Compare-ExactSet (Get-Set ([regex]::Matches($sourceText, $codePattern).Value)) (Get-Set ([regex]::Matches($outputText, $codePattern).Value)) '代码块'
+        $sourceUrls = Get-Set ([regex]::Matches($sourceText, $urlPattern).Value)
+        $outputUrls = Get-Set ([regex]::Matches($outputText, $urlPattern).Value)
+        $sourceImages = Get-Set ([regex]::Matches($sourceText, $imagePattern).Value)
+        $outputImages = Get-Set ([regex]::Matches($outputText, $imagePattern).Value)
+        $sourceCode = Get-Set ([regex]::Matches($sourceText, $codePattern).Value)
+        $outputCode = Get-Set ([regex]::Matches($outputText, $codePattern).Value)
+
+        if ($Mode -eq 'faithful') {
+            Compare-ExactSet $sourceUrls $outputUrls 'URL'
+            Compare-ExactSet $sourceImages $outputImages '图片引用'
+            Compare-ExactSet $sourceCode $outputCode '代码块'
+        } else {
+            Compare-Subset $sourceUrls $outputUrls 'URL'
+            Compare-Subset $sourceImages $outputImages '图片引用'
+            Compare-Subset $sourceCode $outputCode '代码块'
+        }
 
         if ($outputBody -match '(?im)^\s*(?:\d+\s*/\s*\d+|thread\b|x\s+thread\b)' -or $outputBody -match '(?im)^#{1,6}\s*(?:微信公众号版|微信版|X\s*版|X\s*Thread)\s*$') {
             Fail '检测到 thread 或平台分版标记'
@@ -137,9 +176,19 @@ if ($SourceArticle -and $OutputArticle) {
         $sourceLength = ($sourceBody -replace '\s', '').Length
         $outputLength = ($outputBody -replace '\s', '').Length
         $ratio = if ($sourceLength -gt 0) { $outputLength / $sourceLength } else { 0 }
-        if ($ratio -lt 0.85) { Fail ('正文非空白字符比例过低：{0:P1}' -f $ratio) }
-        elseif ($ratio -lt 0.95) { Warn ('正文非空白字符比例为 {0:P1}，需要人工确认没有丢失独立材料' -f $ratio) }
-        else { Pass ('正文非空白字符比例为 {0:P1}' -f $ratio) }
+        if ($Mode -eq 'faithful') {
+            if ($ratio -lt 0.85) { Fail ('faithful 正文非空白字符比例过低：{0:P1}' -f $ratio) }
+            elseif ($ratio -lt 0.95) { Warn ('faithful 正文非空白字符比例为 {0:P1}，需要人工确认没有丢失独立材料' -f $ratio) }
+            else { Pass ('faithful 正文非空白字符比例为 {0:P1}' -f $ratio) }
+        } else {
+            if ($ratio -lt 0.60) { Warn ('publication 正文非空白字符比例为 {0:P1}，需要人工确认承重判断、证据、反例和边界完整' -f $ratio) }
+            else { Pass ('publication 正文非空白字符比例为 {0:P1}' -f $ratio) }
+        }
+
+        if ($outputBody -match '(?im)^#{1,6}\s*(?:Publication Gate|Reader entry|Opening fulfillment|Narrative progression|Accurate retellability|Natural transmission reason|Durable retrieval anchor|内容账本|承重账本)\s*$' -or
+            $outputBody -match '(?im)^\s*(?:Public reader|Recurring situation|Missing capability|Durable payoff|Research consequence)\s*:') {
+            Fail '成稿泄漏内部编辑账本、Publication Gate 探针或上游 reader 字段'
+        } else { Pass '成稿未泄漏内部编辑探针' }
     }
 }
 
